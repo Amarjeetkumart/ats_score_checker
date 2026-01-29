@@ -20,7 +20,7 @@ Production-ready Applicant Tracking System (ATS) resume evaluation platform with
 cd backend
 ../.venv/bin/poetry install
 cp .env.example .env  # update secrets and database URLs
-../.venv/bin/poetry run alembic upgrade head  # once migrations are added
+../.venv/bin/poetry run alembic upgrade head
 ../.venv/bin/poetry run uvicorn app.main:app --reload
 ```
 
@@ -28,9 +28,12 @@ cp .env.example .env  # update secrets and database URLs
 
 | Variable | Description |
 | --- | --- |
+| `ENVIRONMENT` | Deployment environment label (`development`, `production`, etc.) |
 | `SECRET_KEY` | JWT signing secret |
 | `POSTGRES_*` | Database connection parameters |
 | `REDIS_URL` | Redis endpoint for Celery + caching |
+| `PUBLIC_BASE_URL` | Base URL exposed to clients (used for resume download links) |
+| `UPLOAD_DIR` | Filesystem path for resume uploads |
 | `OPENAI_API_KEY` | Optional LLM integrations |
 
 ## Frontend Setup
@@ -42,6 +45,37 @@ npm run dev
 ```
 
 Set `VITE_API_BASE_URL` in `.env` (see `.env.example`) to point at the FastAPI server (default `http://localhost:8000`).
+
+## Docker Deployment
+
+```bash
+cp backend/.env.example backend/.env
+cp backend/.env.docker.example backend/.env.docker  # adjust secrets before running in Docker
+docker compose up --build
+```
+
+- Backend: http://localhost:8000 (runs DB migrations automatically on start)
+- Frontend: http://localhost:3000 (served by Nginx)
+- PostgreSQL: localhost:5432 (default credentials in `docker-compose.yml`)
+- Redis: localhost:6379
+
+To apply new migrations inside the running backend container:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+## Database Migrations
+
+- Generate a new migration after updating SQLAlchemy models:
+
+	```bash
+	cd backend
+	../.venv/bin/poetry run alembic revision --autogenerate -m "describe change"
+	../.venv/bin/poetry run alembic upgrade head
+	```
+
+- The Docker start script automatically runs `alembic upgrade head` before launching `uvicorn`.
 
 ## VS Code Tasks
 
@@ -66,6 +100,6 @@ npm run build  # Type checking + production build
 
 ## Next Steps
 
-- Add Alembic migrations and SQL queries for analytics materialization.
 - Extend resume parsing to ingest files (current API expects pre-parsed metadata).
 - Implement background workers for heavy processing via Celery.
+- Harden CI/CD pipeline and add production monitoring.
