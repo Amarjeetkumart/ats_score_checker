@@ -2,10 +2,23 @@ import axios from "axios";
 
 import { authSelectors, useAuthStore } from "../store/auth";
 
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000"}`;
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const normalizedBaseUrl = (() => {
+  try {
+    const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+    const url = new URL(rawBaseUrl, origin);
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && url.protocol === "http:") {
+      url.protocol = "https:";
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch (error) {
+    console.warn("Invalid API base URL; falling back to default", error);
+    return "http://localhost:8000";
+  }
+})();
 
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL.replace(/\/$/, "")}/api/v1`,
+  baseURL: `${normalizedBaseUrl}/api/v1`,
   withCredentials: false
 });
 
